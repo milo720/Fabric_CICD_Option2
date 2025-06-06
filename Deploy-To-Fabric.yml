@@ -2,7 +2,6 @@ trigger:
   branches:
     include: [dev,test,prod]
     
-pool: MiloFarrell-TestPool
 
 parameters:
 - name: items_in_scope
@@ -10,20 +9,11 @@ parameters:
   type: string
   default: '["Notebook","DataPipeline","Lakehouse","SemanticModel","Report"]'
 
-#- name: target_env
-#  displayName: Select the environment to deploy to
-#  type: string
-#  default: 'dev'
-#  values:
-#    - dev
-#    - test
-#    - prod
-
 
 variables:
   - name: target_env
     value: ${{ replace(variables['Build.SourceBranch'], 'refs/heads/', '') }}
-  # This variable group is linked to Azure Key Vault and secrets contain tenant id, service principal client id, secret
+  # This variable group contains Fabric workspace names for the environments
   - group: Fabric_Deployment_Group_NS
 stages:
   - stage: DeployToFabric
