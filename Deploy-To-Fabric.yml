@@ -13,7 +13,7 @@ parameters:
 variables:
   - name: target_env
     value: ${{ replace(variables['Build.SourceBranch'], 'refs/heads/', '') }}
-  # This variable group contains Fabric workspace names for the environments
+  # This variable group contains the workspace names based on naming convention "[branch]WorkspaceName". It also contains the gitFolder to be referenced in the python script.
   - group: Fabric_Deployment_Group_NS
 stages:
   - stage: DeployToFabric
