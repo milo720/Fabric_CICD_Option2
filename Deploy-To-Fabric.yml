@@ -39,7 +39,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'Get Fabric Access Token'
             inputs:
-              azureSubscription: 'ME-MngEnvMCAP705223-milofarrell-1 (e9d6252f-db1f-4a66-93ab-c54eab93df93)'
+              azureSubscription: 'FILL-IN-SERVICE-CONNECTION'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
