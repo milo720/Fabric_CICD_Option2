@@ -75,12 +75,6 @@ print(f'Variable group to determine workspace is set to {ws_name}')
 workspace_name = os.environ[ws_name.upper()]
 print(f'Obtaining GUID for {workspace_name}')
 
-# generating the token used to call the Fabric REST API
-# resource = 'https://api.fabric.microsoft.com/'
-# scope = f'{resource}.default'
-# print(f'scope set to {scope}')
-# token = token_credential.get_token(scope)
-
 # call the workspace ID lookup function
 lookup_response = get_workspace_id(workspace_name, token)
 if lookup_response.startswith("Error"):
