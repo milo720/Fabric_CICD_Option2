@@ -13,13 +13,12 @@ Example demonstrating:
 # argparse is required to gracefully deal with the arguments
 import os,argparse, requests, ast
 from fabric_cicd import FabricWorkspace, publish_all_items, unpublish_all_orphan_items,change_log_level
-from azure.identity import ClientSecretCredential
 
 # function to return the workspace ID
 def get_workspace_id(p_ws_name, p_token):
     url = "https://api.fabric.microsoft.com/v1/workspaces"
     headers = {
-        "Authorization": f"Bearer {p_token.token}",
+        "Authorization": f"Bearer {p_token}",
         "Content-Type": "application/json"
     }
 
@@ -41,18 +40,28 @@ change_log_level("DEBUG")
 
 # parse arguments from yaml pipeline. These are typically secrets from a variable group linked to an Azure Key Vault
 parser = argparse.ArgumentParser(description='Process Azure Pipeline arguments.')
-parser.add_argument('--aztenantid',type=str, help= 'tenant ID')
-parser.add_argument('--azclientid',type=str, help= 'SP client ID')
-parser.add_argument('--azspsecret',type=str, help= 'SP secret')
 parser.add_argument('--target_env',type=str, help= 'target environment')
-
 parser.add_argument('--items_in_scope',type=str, help= 'Defines the item types to be deployed')
 args = parser.parse_args()
 item_types_in_scope = args.items_in_scope
 
-#get the token#
-print('Obtaining token...')
-token_credential = ClientSecretCredential(client_id=args.azclientid, client_secret=args.azspsecret, tenant_id=args.aztenantid)
+#get the token from environment variable#
+print('Obtaining token from environment variable...')
+token = os.environ.get('FABRIC_TOKEN')
+if not token:
+    raise Exception('FABRIC_TOKEN environment variable not set.')
+
+# Secure TokenCredential wrapper for the raw token
+class SimpleTokenCredential:
+    def __init__(self, token):
+        self._token = token
+    def get_token(self, *scopes, **kwargs):
+        class Token:
+            def __init__(self, token):
+                self.token = token
+            def __str__(self):
+                return self.token
+        return Token(self._token)
 
 # get target environment name
 tgtenv = args.target_env
@@ -67,10 +76,10 @@ workspace_name = os.environ[ws_name.upper()]
 print(f'Obtaining GUID for {workspace_name}')
 
 # generating the token used to call the Fabric REST API
-resource = 'https://api.fabric.microsoft.com/'
-scope = f'{resource}.default'
-print(f'scope set to {scope}')
-token = token_credential.get_token(scope)
+# resource = 'https://api.fabric.microsoft.com/'
+# scope = f'{resource}.default'
+# print(f'scope set to {scope}')
+# token = token_credential.get_token(scope)
 
 # call the workspace ID lookup function
 lookup_response = get_workspace_id(workspace_name, token)
@@ -93,7 +102,7 @@ target_workspace = FabricWorkspace(
     environment=tgtenv,
     repository_directory=repository_directory,
     item_type_in_scope=item_types,
-    token_credential=token_credential,
+    token_credential=SimpleTokenCredential(token),
 )
 
 # Publish items to the workspace
@@ -102,3 +111,12 @@ publish_all_items(target_workspace)
 
 # Unpublish orphaned items from the workspace
 unpublish_all_orphan_items(target_workspace)
+
+# Clear sensitive variables from memory after use
+import gc
+try:
+    del token
+    del SimpleTokenCredential
+    gc.collect()
+except Exception:
+    pass

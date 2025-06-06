@@ -1,6 +1,8 @@
 trigger:
   branches:
     include: [dev,test,prod]
+    
+pool: MiloFarrell-TestPool
 
 parameters:
 - name: items_in_scope
@@ -22,8 +24,6 @@ variables:
   - name: target_env
     value: ${{ replace(variables['Build.SourceBranch'], 'refs/heads/', '') }}
   # This variable group is linked to Azure Key Vault and secrets contain tenant id, service principal client id, secret
-  - group: Fabric_Deployment_Group_S
-  # This variable group contains the workspace names based on naming convention "[branch]WorkspaceName". It also contains the gitFolder to be referenced in the python script.
   - group: Fabric_Deployment_Group_NS
 stages:
   - stage: DeployToFabric
@@ -45,10 +45,21 @@ stages:
               python -m pip install --upgrade pip
               pip install fabric-cicd 
             displayName: "Install Fabric CICD Library"
+          # Get Fabric/Power BI API token using Azure CLI
+          - task: AzureCLI@2
+            displayName: 'Get Fabric Access Token'
+            inputs:
+              azureSubscription: 'ME-MngEnvMCAP705223-milofarrell-1 (e9d6252f-db1f-4a66-93ab-c54eab93df93)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                TOKEN=$(az account get-access-token --resource=https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
+          # Run deployment using fabric-cicd
           - task: PythonScript@0
             inputs:
               scriptSource: 'filePath'
               scriptPath: 'scripts/deploy/deploy-to-fabric.py'
-              arguments: '--aztenantid $(aztenantid) --azclientid $(azclientid) --azspsecret $(azspsecret) --items_in_scope ${{ parameters.items_in_scope }} --target_env $(target_env)'
-              #failOnStderr: true 
+              arguments: '--items_in_scope ${{ parameters.items_in_scope }} --target_env $(target_env)'
+            env:
+              FABRIC_TOKEN: $(FABRIC_TOKEN)
             displayName: 'Run deployment using fabric-cicd'
